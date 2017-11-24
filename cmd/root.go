@@ -8,13 +8,21 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
+// CfgFileName default config file name
+const CfgFileName = ".mysh"
+
+var (
+	cfgFile string
+	// Verbose the message
+	Verbose bool
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -43,9 +51,14 @@ func init() {
 	// will be global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.mysh.yaml)")
 
+	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
+
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().BoolP("toggle", "t", false, "help message for toggle")
+
+	// Enable suggestion
+	rootCmd.DisableSuggestions = false
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -53,23 +66,64 @@ func initConfig() {
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
+	} else if cfgFileExists() {
+		// Use config file from current directory
+		curDir := currentDir()
+		viper.AddConfigPath(curDir)
 	} else {
-		// Find home directory.
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		// Search config in home directory with name ".mysh" (without extension).
+		// Use config file from home directory.
+		home := homeDir()
 		viper.AddConfigPath(home)
-		viper.SetConfigName(".mysh")
 	}
 
+	// Search config in home directory with name ".mysh" (without extension)
+	viper.SetConfigName(CfgFileName)
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		// fmt.Println("Using config file:", viper.ConfigFileUsed())
+		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
+}
+
+func currentDir() string {
+	pwd, err := os.Getwd()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	return pwd
+}
+
+func homeDir() string {
+	home, err := homedir.Dir()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	return home
+}
+
+func exists(name string) bool {
+    if _, err := os.Stat(name); err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+	}
+    return true
+}
+
+func cfgFileNameExt(ext string) string {
+	return CfgFileName + "." + ext
+}
+
+func cfgFileExists() bool {
+	curDir := currentDir()
+	ymlFile := filepath.Join(curDir, cfgFileNameExt("yml"))
+	yamlFile := filepath.Join(curDir, cfgFileNameExt("yaml"))
+
+	if exists(ymlFile) || exists(yamlFile) {
+		return true
+	}
+	return false
 }

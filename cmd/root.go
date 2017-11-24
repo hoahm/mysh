@@ -8,9 +8,8 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/hoahm/mysh/util"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -68,11 +67,11 @@ func initConfig() {
 		viper.SetConfigFile(cfgFile)
 	} else if cfgFileExists() {
 		// Use config file from current directory
-		curDir := currentDir()
+		curDir := util.CurrentDir()
 		viper.AddConfigPath(curDir)
 	} else {
 		// Use config file from home directory.
-		home := homeDir()
+		home := util.HomeDir()
 		viper.AddConfigPath(home)
 	}
 
@@ -81,48 +80,17 @@ func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Printf("Error reading config file %s", viper.ConfigFileUsed())
 	}
-}
-
-func currentDir() string {
-	pwd, err := os.Getwd()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	return pwd
-}
-
-func homeDir() string {
-	home, err := homedir.Dir()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	return home
-}
-
-func exists(name string) bool {
-    if _, err := os.Stat(name); err != nil {
-		if os.IsNotExist(err) {
-			return false
-		}
-	}
-    return true
-}
-
-func cfgFileNameExt(ext string) string {
-	return CfgFileName + "." + ext
 }
 
 func cfgFileExists() bool {
-	curDir := currentDir()
-	ymlFile := filepath.Join(curDir, cfgFileNameExt("yml"))
-	yamlFile := filepath.Join(curDir, cfgFileNameExt("yaml"))
+	curDir := util.CurrentDir()
+	ymlFile := util.FilePath(curDir, CfgFileName, "yml")
+	yamlFile := util.FilePath(curDir, CfgFileName, "yaml")
 
-	if exists(ymlFile) || exists(yamlFile) {
+	if util.Exists(ymlFile) || util.Exists(yamlFile) {
 		return true
 	}
 	return false
